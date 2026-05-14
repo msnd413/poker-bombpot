@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0b0f14" rx="96"/>
+  <g transform="translate(256 270)">
+    <g transform="rotate(0)">
+      <path d="M0,0 L0,-170 A170,170 0 0,1 120.21,-120.21 Z" fill="#3b5998"/>
+      <path d="M0,0 L120.21,-120.21 A170,170 0 0,1 170,0 Z" fill="#7b3f99"/>
+      <path d="M0,0 L170,0 A170,170 0 0,1 120.21,120.21 Z" fill="#a83e58"/>
+      <path d="M0,0 L120.21,120.21 A170,170 0 0,1 0,170 Z" fill="#3e8a55"/>
+      <path d="M0,0 L0,170 A170,170 0 0,1 -120.21,120.21 Z" fill="#bb8a3c"/>
+      <path d="M0,0 L-120.21,120.21 A170,170 0 0,1 -170,0 Z" fill="#5e4a86"/>
+      <path d="M0,0 L-170,0 A170,170 0 0,1 -120.21,-120.21 Z" fill="#3e8589"/>
+      <path d="M0,0 L-120.21,-120.21 A170,170 0 0,1 0,-170 Z" fill="#9c4a3c"/>
+    </g>
+    <circle cx="0" cy="0" r="32" fill="#ffd54a" stroke="#0b0f14" stroke-width="5"/>
+    <circle cx="0" cy="0" r="10" fill="#0b0f14"/>
+  </g>
+  <polygon points="256,52 230,110 282,110" fill="#ffd54a" stroke="#0b0f14" stroke-width="3"/>
+</svg>
