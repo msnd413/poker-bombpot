@@ -1,4 +1,4 @@
-const CACHE = "bombpot-v2";
+const CACHE = "bombpot-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -21,14 +21,29 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
+  const accept = e.request.headers.get("accept") || "";
+  const isNav = e.request.mode === "navigate" || accept.includes("text/html");
+
+  if (isNav) {
+    // HTML: network-first so updates show up immediately
+    e.respondWith(
+      fetch(e.request).then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match("./index.html"));
-    })
-  );
+      }).catch(() => caches.match(e.request).then(c => c || caches.match("./index.html")))
+    );
+  } else {
+    // Other assets: cache-first
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+          return res;
+        }).catch(() => caches.match("./index.html"));
+      })
+    );
+  }
 });

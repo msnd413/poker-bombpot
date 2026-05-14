@@ -110,27 +110,29 @@
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 8px 10px;
+    padding: 10px 12px 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 8px;
     min-height: 0;
     position: relative;
   }
   .wheel-label {
-    font-size: 10px; letter-spacing: 0.24em; color: var(--muted); font-weight: 700;
-    align-self: flex-start;
+    font-size: 11px; letter-spacing: 0.26em; color: var(--muted); font-weight: 700;
+    flex-shrink: 0;
   }
   .wheel-result {
-    font-size: 18px; font-weight: 800; color: var(--text);
+    font-size: 24px; font-weight: 800; color: var(--text);
     line-height: 1.15; text-align: center;
     word-break: keep-all; overflow-wrap: anywhere;
-    min-height: 22px;
+    min-height: 30px;
+    flex-shrink: 0;
+    padding: 0 4px;
   }
-  .wheel-result.bb { font-size: 32px; color: var(--accent); letter-spacing: -0.02em; }
-  .wheel-result small { font-size: 0.5em; color: var(--muted); margin-left: 4px; font-weight: 700; }
+  .wheel-result.bb { font-size: 52px; color: var(--accent); letter-spacing: -0.02em; min-height: 56px; }
+  .wheel-result small { font-size: 0.42em; color: var(--muted); margin-left: 4px; font-weight: 700; }
   .wheel-result.pop { animation: pop 0.5s ease-out; }
   @keyframes pop {
     0% { transform: scale(1); }
@@ -140,21 +142,18 @@
 
   .wheel-wrap {
     position: relative;
-    flex: 1;
+    width: 180px;
+    max-width: 60vw;
     aspect-ratio: 1;
-    max-height: 100%;
-    width: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-shrink: 0;
   }
   .wheel-pointer {
     position: absolute;
-    top: -10px; left: 50%; transform: translateX(-50%);
+    top: -12px; left: 50%; transform: translateX(-50%);
     width: 0; height: 0;
     border-left: 9px solid transparent;
     border-right: 9px solid transparent;
-    border-top: 15px solid var(--accent);
+    border-top: 16px solid var(--accent);
     z-index: 3;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
   }
@@ -223,13 +222,15 @@
   .history-mini .h-item strong { color: var(--accent); }
 
   /* Small height: tighten things */
-  @media (max-height: 700px) {
-    .wheel-section { padding: 4px 8px; }
-    .wheel-result { font-size: 14px; min-height: 18px; }
-    .wheel-result.bb { font-size: 24px; }
+  @media (max-height: 720px) {
+    .wheel-section { padding: 6px 10px 8px; gap: 4px; }
+    .wheel-wrap { width: 140px; }
+    .wheel-result { font-size: 18px; min-height: 24px; }
+    .wheel-result.bb { font-size: 40px; min-height: 44px; }
     .timer-inline { font-size: 24px; }
     .timer-bar { padding: 8px 12px; }
     .btn { padding: 10px; }
+    .history-mini { padding: 6px 10px; }
   }
 </style>
 </head>
