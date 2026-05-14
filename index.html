@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0b0f14" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BombPot" />
+<title>Bomb Pot 抽選</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #131a22;
+    --panel2: #1b2430;
+    --text: #e8eef5;
+    --muted: #9aa6b2;
+    --accent: #ffd54a;
+    --accent2: #ff7a59;
+    --green: #4ade80;
+    --red: #ef4444;
+    --border: #263241;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    overscroll-behavior: none;
+    height: 100%;
+    user-select: none;
+  }
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .app {
+    max-width: 520px;
+    margin: 0 auto;
+    height: 100vh; height: 100dvh;
+    padding: 10px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 2px 2px 0;
+  }
+  h1 {
+    font-size: 13px; margin: 0;
+    letter-spacing: 0.18em; color: var(--muted);
+    font-weight: 700;
+  }
+  .icon-btn {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    width: 38px; height: 38px; border-radius: 10px; font-size: 17px; cursor: pointer;
+  }
+  .icon-btn:active { transform: scale(0.96); }
+
+  .timer-bar {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px;
+  }
+  .timer-inline {
+    font-variant-numeric: tabular-nums;
+    font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1;
+  }
+  .timer-inline.warn { color: var(--accent); }
+  .timer-inline.fire { color: var(--accent2); }
+  .progress-mini {
+    flex: 1; height: 6px; background: #0f161e; border-radius: 999px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-bar-mini {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.4s linear;
+  }
+
+  .controls {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .btn {
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #1a0e00; border: none;
+  }
+  .btn.danger {
+    background: #2a151a; color: #ffb4b4; border-color: #4b1f24;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn.wide { grid-column: span 2; }
+
+  .wheels {
+    flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0;
+  }
+  .wheel-section {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 0;
+    position: relative;
+  }
+  .wheel-label {
+    font-size: 10px; letter-spacing: 0.24em; color: var(--muted); font-weight: 700;
+    align-self: flex-start;
+  }
+  .wheel-result {
+    font-size: 18px; font-weight: 800; color: var(--text);
+    line-height: 1.15; text-align: center;
+    word-break: keep-all; overflow-wrap: anywhere;
+    min-height: 22px;
+  }
+  .wheel-result.bb { font-size: 32px; color: var(--accent); letter-spacing: -0.02em; }
+  .wheel-result small { font-size: 0.5em; color: var(--muted); margin-left: 4px; font-weight: 700; }
+  .wheel-result.pop { animation: pop 0.5s ease-out; }
+  @keyframes pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.18); text-shadow: 0 0 24px var(--accent); }
+    100% { transform: scale(1); }
+  }
+
+  .wheel-wrap {
+    position: relative;
+    flex: 1;
+    aspect-ratio: 1;
+    max-height: 100%;
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .wheel-pointer {
+    position: absolute;
+    top: -3px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 20px solid var(--accent);
+    z-index: 3;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+  }
+  .wheel-svg {
+    width: 100%; height: 100%; display: block;
+    transition: transform 3s cubic-bezier(0.18, 0.7, 0.2, 1);
+    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.5));
+  }
+
+  /* When flashing on result */
+  .flash-bg {
+    animation: flashBg 0.9s ease-out;
+  }
+  @keyframes flashBg {
+    0% { box-shadow: inset 0 0 0 2px var(--accent); }
+    100% { box-shadow: inset 0 0 0 2px transparent; }
+  }
+
+  /* Modal */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: flex-end; justify-content: center; z-index: 10;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    background: var(--panel); width: 100%; max-width: 520px;
+    max-height: 85vh; overflow-y: auto;
+    border-radius: 18px 18px 0 0; padding: 18px;
+    border: 1px solid var(--border); border-bottom: none;
+  }
+  .sheet h3 { margin: 0 0 12px; font-size: 16px; }
+  .row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #1d2733;
+  }
+  .row:last-child { border-bottom: none; }
+  .row label { font-size: 15px; }
+  .toggle { position: relative; width: 48px; height: 28px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; background: #2d3947; border-radius: 999px;
+    transition: 0.2s; cursor: pointer;
+  }
+  .slider::before {
+    content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px;
+    background: #fff; border-radius: 50%; transition: 0.2s;
+  }
+  .toggle input:checked + .slider { background: var(--green); }
+  .toggle input:checked + .slider::before { transform: translateX(20px); }
+  .num-input { display: flex; align-items: center; gap: 8px; }
+  .num-input input {
+    width: 64px; padding: 8px; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; font-size: 16px; text-align: center;
+  }
+  .close-btn { width: 100%; margin-top: 16px; }
+
+  .history-mini {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 8px 12px;
+    font-size: 12px; color: var(--muted);
+    display: flex; gap: 10px; overflow-x: auto; white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .history-mini::-webkit-scrollbar { display: none; }
+  .history-mini .h-item { flex-shrink: 0; }
+  .history-mini .h-item strong { color: var(--accent); }
+
+  /* Small height: tighten things */
+  @media (max-height: 700px) {
+    .wheel-section { padding: 4px 8px; }
+    .wheel-result { font-size: 14px; min-height: 18px; }
+    .wheel-result.bb { font-size: 24px; }
+    .timer-inline { font-size: 24px; }
+    .timer-bar { padding: 8px 12px; }
+    .btn { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>BOMB POT</h1>
+    <button class="icon-btn" id="settingsBtn" aria-label="設定">⚙</button>
+  </header>
+
+  <div class="timer-bar">
+    <div class="timer-inline" id="timer">45:00</div>
+    <div class="progress-mini"><div class="progress-bar-mini" id="progressBar"></div></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="startBtn">スタート</button>
+    <button class="btn" id="drawNowBtn">今すぐ抽選</button>
+  </div>
+
+  <div class="wheels">
+    <div class="wheel-section" id="gameSection">
+      <div class="wheel-label">GAME</div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer"></div>
+        <svg class="wheel-svg" id="gameWheel" viewBox="-100 -100 200 200"></svg>
+      </div>
+      <div class="wheel-result" id="gameResult">—</div>
+    </div>
+
+    <div class="wheel-section" id="bbSection">
+      <div class="wheel-label">BLINDS</div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer"></div>
+        <svg class="wheel-svg" id="bbWheel" viewBox="-100 -100 200 200"></svg>
+      </div>
+      <div class="wheel-result bb" id="bbResult">—</div>
+    </div>
+  </div>
+
+  <div class="history-mini" id="historyMini"></div>
+</div>
+
+<!-- Settings Modal -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h3>設定</h3>
+    <div class="row">
+      <label>タイマー間隔（分）</label>
+      <div class="num-input"><input type="number" id="intervalMin" min="1" max="180" /></div>
+    </div>
+    <div class="row">
+      <label>BB 最小</label>
+      <div class="num-input"><input type="number" id="bbMin" min="1" max="100" /></div>
+    </div>
+    <div class="row">
+      <label>BB 最大</label>
+      <div class="num-input"><input type="number" id="bbMax" min="1" max="100" /></div>
+    </div>
+    <div class="row">
+      <label>音で通知</label>
+      <span class="toggle"><input type="checkbox" id="soundOn" /><span class="slider"></span></span>
+    </div>
+    <div class="row">
+      <label>バイブで通知</label>
+      <span class="toggle"><input type="checkbox" id="vibeOn" /><span class="slider"></span></span>
+    </div>
+    <div class="row">
+      <label>画面ロック防止</label>
+      <span class="toggle"><input type="checkbox" id="wakeOn" /><span class="slider"></span></span>
+    </div>
+
+    <h3 style="margin-top:18px">ゲームプール</h3>
+    <div id="gameList"></div>
+
+    <button class="btn primary close-btn" id="closeBtn">閉じる</button>
+    <button class="btn close-btn" id="resetTimerBtn" style="margin-top:8px">タイマーをリセット</button>
+    <button class="btn danger close-btn" id="resetAllBtn" style="margin-top:8px">設定を初期値に戻す</button>
+  </div>
+</div>
+
+<script>
+const DEFAULT_GAMES = [
+  { name: "No-Limit Hold'em Double Board", short: "NLH DB", enabled: true },
+  { name: "Pot-Limit Omaha", short: "PLO", enabled: true },
+  { name: "Pot-Limit Omaha Double Board", short: "PLO DB", enabled: true },
+  { name: "5-Card Pot-Limit Omaha", short: "5C PLO", enabled: true },
+  { name: "Big O", short: "Big O", enabled: true },
+  { name: "Courchevel", short: "Courchevel", enabled: true },
+  { name: "2-7 Triple Draw", short: "2-7 TD", enabled: true },
+  { name: "Badugi", short: "Badugi", enabled: true },
+];
+
+const DEFAULT_SETTINGS = {
+  intervalMin: 45,
+  bbMin: 1,
+  bbMax: 6,
+  soundOn: true,
+  vibeOn: true,
+  wakeOn: true,
+  games: DEFAULT_GAMES,
+};
+
+const LS_KEY = "bombpot_settings_v4";
+const LS_HISTORY = "bombpot_history_v4";
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return structuredClone(DEFAULT_SETTINGS);
+    const parsed = JSON.parse(raw);
+    const merged = { ...structuredClone(DEFAULT_SETTINGS), ...parsed };
+    if (!Array.isArray(merged.games) || merged.games.length === 0) merged.games = DEFAULT_GAMES.slice();
+    return merged;
+  } catch { return structuredClone(DEFAULT_SETTINGS); }
+}
+function saveSettings() { localStorage.setItem(LS_KEY, JSON.stringify(settings)); }
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(LS_HISTORY) || "[]"); } catch { return []; }
+}
+function saveHistory() { localStorage.setItem(LS_HISTORY, JSON.stringify(history.slice(0, 10))); }
+
+let settings = loadSettings();
+let history = loadHistory();
+
+let intervalSec = settings.intervalMin * 60;
+let remaining = intervalSec;
+let running = false;
+let drawing = false;
+let tickHandle = null;
+let endTimestamp = null;
+let wakeLock = null;
+let audioCtx = null;
+
+// DOM
+const timerEl = document.getElementById("timer");
+const barEl = document.getElementById("progressBar");
+const startBtn = document.getElementById("startBtn");
+const drawNowBtn = document.getElementById("drawNowBtn");
+const gameWheel = document.getElementById("gameWheel");
+const bbWheel = document.getElementById("bbWheel");
+const gameResult = document.getElementById("gameResult");
+const bbResult = document.getElementById("bbResult");
+const gameSection = document.getElementById("gameSection");
+const bbSection = document.getElementById("bbSection");
+const historyMini = document.getElementById("historyMini");
+const settingsBtn = document.getElementById("settingsBtn");
+const overlay = document.getElementById("overlay");
+const closeBtn = document.getElementById("closeBtn");
+const resetTimerBtn = document.getElementById("resetTimerBtn");
+const resetAllBtn = document.getElementById("resetAllBtn");
+const intervalInput = document.getElementById("intervalMin");
+const bbMinInput = document.getElementById("bbMin");
+const bbMaxInput = document.getElementById("bbMax");
+const soundOnInput = document.getElementById("soundOn");
+const vibeOnInput = document.getElementById("vibeOn");
+const wakeOnInput = document.getElementById("wakeOn");
+const gameListEl = document.getElementById("gameList");
+
+function fmt(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+
+function renderTimer() {
+  timerEl.textContent = fmt(remaining);
+  const pct = ((intervalSec - remaining) / intervalSec) * 100;
+  barEl.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  timerEl.classList.toggle("warn", remaining <= 60 && remaining > 10);
+  timerEl.classList.toggle("fire", remaining <= 10);
+}
+
+function renderHistory() {
+  if (history.length === 0) {
+    historyMini.innerHTML = '<span class="h-item">履歴なし</span>';
+    return;
+  }
+  historyMini.innerHTML = history.map(h =>
+    `<span class="h-item">${h.time} ${h.game} <strong>${h.bb}BB</strong></span>`
+  ).join("");
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+}
+
+function beep(freq, durMs, when=0, vol=0.25, type="sine") {
+  if (!settings.soundOn || !audioCtx) return;
+  const t0 = audioCtx.currentTime + when;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = freq; osc.type = type;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(vol, t0 + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + durMs/1000);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + durMs/1000 + 0.05);
+}
+
+function playSpinTicks(durMs) {
+  if (!settings.soundOn || !audioCtx) return;
+  const N = 24;
+  for (let i = 0; i < N; i++) {
+    const progress = 1 - Math.pow(1 - i / N, 2.4);
+    const t = progress * (durMs / 1000);
+    beep(900, 22, t, 0.07, "square");
+  }
+}
+function playStopSound() {
+  ensureAudio();
+  beep(620, 90, 0, 0.22, "triangle");
+  beep(420, 130, 0.06, 0.17, "triangle");
+}
+function playFinalSound() {
+  ensureAudio();
+  beep(660, 150, 0, 0.22);
+  beep(880, 150, 0.16, 0.22);
+  beep(1320, 360, 0.32, 0.28);
+}
+
+function vibrate(pattern) {
+  if (!settings.vibeOn || !navigator.vibrate) return;
+  navigator.vibrate(pattern || [200, 100, 200, 100, 400]);
+}
+
+async function requestWakeLock() {
+  if (!settings.wakeOn || !("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } catch {}
+}
+function releaseWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch {} wakeLock = null; }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && (running || drawing)) requestWakeLock();
+});
+
+// ----- Wheels -----
+const WHEEL_COLORS = ["#3b5998", "#7b3f99", "#a83e58", "#3e8a55", "#bb8a3c", "#5e4a86", "#3e8589", "#9c4a3c", "#4a6b3c", "#86583c"];
+
+function escapeXml(s) {
+  return String(s).replace(/[<>&"']/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function buildWheel(svg, items) {
+  const N = items.length;
+  if (N === 0) { svg.innerHTML = ""; return; }
+  const sa = 360 / N;
+  const r = 95;
+  let html = "";
+  for (let i = 0; i < N; i++) {
+    const sRad = (i * sa - sa / 2 - 90) * Math.PI / 180;
+    const eRad = (i * sa + sa / 2 - 90) * Math.PI / 180;
+    const x1 = r * Math.cos(sRad), y1 = r * Math.sin(sRad);
+    const x2 = r * Math.cos(eRad), y2 = r * Math.sin(eRad);
+    const large = sa > 180 ? 1 : 0;
+    const color = WHEEL_COLORS[i % WHEEL_COLORS.length];
+    html += `<path d="M0,0 L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${color}" stroke="#0b0f14" stroke-width="0.6"/>`;
+    const cDeg = i * sa - 90;
+    const cRad = cDeg * Math.PI / 180;
+    const tx = (r * 0.62) * Math.cos(cRad);
+    const ty = (r * 0.62) * Math.sin(cRad);
+    const fontSize = N <= 4 ? 16 : N <= 6 ? 13 : N <= 8 ? 10.5 : N <= 10 ? 9 : N <= 14 ? 7 : 5.5;
+    html += `<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="white" font-size="${fontSize}" font-weight="700" text-anchor="middle" dominant-baseline="middle" transform="rotate(${cDeg.toFixed(2)} ${tx.toFixed(2)} ${ty.toFixed(2)})">${escapeXml(items[i])}</text>`;
+  }
+  html += `<circle cx="0" cy="0" r="10" fill="#ffd54a" stroke="#0b0f14" stroke-width="1.5"/>`;
+  html += `<circle cx="0" cy="0" r="3" fill="#0b0f14"/>`;
+  svg.innerHTML = html;
+}
+
+const wheelAngles = { game: 0, bb: 0 };
+
+function spinWheel(key, wheelEl, N, targetIndex, durationMs) {
+  return new Promise(resolve => {
+    const sa = 360 / N;
+    const baseSpins = 5 + Math.floor(Math.random() * 3);
+    const jitter = (Math.random() - 0.5) * sa * 0.55;
+    const current = wheelAngles[key];
+    const currentMod = ((current % 360) + 360) % 360;
+    const targetMod = ((360 - targetIndex * sa + jitter) % 360 + 360) % 360;
+    const delta = baseSpins * 360 + ((targetMod - currentMod + 360) % 360);
+    wheelAngles[key] = current + delta;
+
+    wheelEl.style.transition = "none";
+    wheelEl.style.transform = `rotate(${current}deg)`;
+    void wheelEl.offsetHeight;
+    wheelEl.style.transition = `transform ${durationMs}ms cubic-bezier(0.18, 0.7, 0.2, 1)`;
+    wheelEl.style.transform = `rotate(${wheelAngles[key]}deg)`;
+    playSpinTicks(durationMs);
+    setTimeout(() => resolve(), durationMs + 30);
+  });
+}
+
+function pulseSection(el) {
+  el.classList.remove("flash-bg"); void el.offsetWidth; el.classList.add("flash-bg");
+}
+function popResult(el) {
+  el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+}
+
+// ----- Draw -----
+async function draw() {
+  if (drawing) return;
+  const enabled = settings.games.filter(g => g.enabled);
+  if (enabled.length === 0) {
+    gameResult.textContent = "（プール空）";
+    return;
+  }
+  drawing = true;
+  ensureAudio();
+
+  // pause timer during spin
+  const wasRunning = running;
+  if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+  running = false;
+
+  startBtn.disabled = true;
+  drawNowBtn.disabled = true;
+  startBtn.textContent = "抽選中…";
+
+  const gameIdx = Math.floor(Math.random() * enabled.length);
+  const game = enabled[gameIdx].name;
+  const gameShorts = enabled.map(g => g.short || g.name);
+
+  const lo = Math.min(settings.bbMin, settings.bbMax);
+  const hi = Math.max(settings.bbMin, settings.bbMax);
+  const bbCandidates = [];
+  for (let i = lo; i <= hi; i++) bbCandidates.push(i);
+  const bbIdx = Math.floor(Math.random() * bbCandidates.length);
+  const bb = bbCandidates[bbIdx];
+
+  // Build wheels with current data
+  buildWheel(gameWheel, gameShorts);
+  buildWheel(bbWheel, bbCandidates.map(String));
+
+  gameResult.textContent = "…";
+  bbResult.textContent = "…";
+
+  await spinWheel("game", gameWheel, gameShorts.length, gameIdx, 3000);
+  playStopSound();
+  gameResult.textContent = game;
+  popResult(gameResult);
+  pulseSection(gameSection);
+  vibrate([60]);
+
+  await wait(500);
+
+  await spinWheel("bb", bbWheel, bbCandidates.length, bbIdx, 3200);
+  playFinalSound();
+  bbResult.innerHTML = `${bb}<small>BB</small>`;
+  popResult(bbResult);
+  pulseSection(bbSection);
+  vibrate();
+
+  // record
+  const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  history.unshift({ game, bb, time });
+  history = history.slice(0, 10);
+  saveHistory();
+  renderHistory();
+
+  drawing = false;
+  startBtn.disabled = false;
+  drawNowBtn.disabled = false;
+
+  // auto-restart timer for next cycle
+  startTimer(true);
+}
+
+// ----- Timer -----
+function startTimer(fresh=true) {
+  ensureAudio();
+  if (fresh) {
+    intervalSec = settings.intervalMin * 60;
+    remaining = intervalSec;
+  }
+  endTimestamp = Date.now() + remaining * 1000;
+  running = true;
+  startBtn.textContent = "一時停止";
+  requestWakeLock();
+  if (tickHandle) clearInterval(tickHandle);
+  tickHandle = setInterval(tick, 250);
+  renderTimer();
+}
+function pauseTimer() {
+  running = false;
+  if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+  if (endTimestamp) remaining = Math.max(0, (endTimestamp - Date.now()) / 1000);
+  startBtn.textContent = "再開";
+  releaseWakeLock();
+  renderTimer();
+}
+function resetTimer() {
+  running = false;
+  if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+  intervalSec = settings.intervalMin * 60;
+  remaining = intervalSec;
+  endTimestamp = null;
+  startBtn.textContent = "スタート";
+  releaseWakeLock();
+  renderTimer();
+}
+function tick() {
+  remaining = Math.max(0, (endTimestamp - Date.now()) / 1000);
+  renderTimer();
+  if (remaining <= 0) {
+    clearInterval(tickHandle); tickHandle = null;
+    running = false;
+    draw();
+  }
+}
+
+startBtn.addEventListener("click", () => {
+  if (drawing) return;
+  if (running) pauseTimer();
+  else startTimer(remaining === intervalSec ? true : false);
+});
+drawNowBtn.addEventListener("click", () => { draw(); });
+
+// ----- Settings -----
+function renderSettingsUI() {
+  intervalInput.value = settings.intervalMin;
+  bbMinInput.value = settings.bbMin;
+  bbMaxInput.value = settings.bbMax;
+  soundOnInput.checked = settings.soundOn;
+  vibeOnInput.checked = settings.vibeOn;
+  wakeOnInput.checked = settings.wakeOn;
+  gameListEl.innerHTML = settings.games.map((g, i) => `
+    <div class="row">
+      <label>${g.name}</label>
+      <span class="toggle"><input type="checkbox" data-i="${i}" class="game-toggle" ${g.enabled ? "checked" : ""} /><span class="slider"></span></span>
+    </div>
+  `).join("");
+  gameListEl.querySelectorAll(".game-toggle").forEach(el => {
+    el.addEventListener("change", (e) => {
+      const i = parseInt(e.target.dataset.i, 10);
+      settings.games[i].enabled = e.target.checked;
+      saveSettings();
+      buildInitialWheels();
+    });
+  });
+}
+function bindSettingInputs() {
+  intervalInput.addEventListener("change", () => {
+    const v = Math.max(1, Math.min(180, parseInt(intervalInput.value, 10) || 45));
+    settings.intervalMin = v; saveSettings();
+    if (!running) resetTimer();
+  });
+  bbMinInput.addEventListener("change", () => {
+    settings.bbMin = Math.max(1, parseInt(bbMinInput.value, 10) || 1);
+    saveSettings(); buildInitialWheels();
+  });
+  bbMaxInput.addEventListener("change", () => {
+    settings.bbMax = Math.max(1, parseInt(bbMaxInput.value, 10) || 6);
+    saveSettings(); buildInitialWheels();
+  });
+  soundOnInput.addEventListener("change", () => { settings.soundOn = soundOnInput.checked; saveSettings(); ensureAudio(); });
+  vibeOnInput.addEventListener("change", () => { settings.vibeOn = vibeOnInput.checked; saveSettings(); });
+  wakeOnInput.addEventListener("change", () => {
+    settings.wakeOn = wakeOnInput.checked; saveSettings();
+    if (settings.wakeOn && running) requestWakeLock(); else releaseWakeLock();
+  });
+}
+settingsBtn.addEventListener("click", () => { renderSettingsUI(); overlay.classList.add("open"); });
+closeBtn.addEventListener("click", () => overlay.classList.remove("open"));
+overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+resetTimerBtn.addEventListener("click", () => { resetTimer(); overlay.classList.remove("open"); });
+resetAllBtn.addEventListener("click", () => {
+  if (!confirm("設定を初期値に戻すで。ええか？")) return;
+  settings = structuredClone(DEFAULT_SETTINGS);
+  saveSettings();
+  renderSettingsUI();
+  resetTimer();
+  buildInitialWheels();
+});
+
+function buildInitialWheels() {
+  const enabled = settings.games.filter(g => g.enabled).map(g => g.short || g.name);
+  buildWheel(gameWheel, enabled.length ? enabled : ["—"]);
+  const lo = Math.min(settings.bbMin, settings.bbMax);
+  const hi = Math.max(settings.bbMin, settings.bbMax);
+  const bbCands = [];
+  for (let i = lo; i <= hi; i++) bbCands.push(String(i));
+  buildWheel(bbWheel, bbCands.length ? bbCands : ["—"]);
+}
+
+bindSettingInputs();
+buildInitialWheels();
+renderTimer();
+renderHistory();
+</script>
+</body>
+</html>
