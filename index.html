@@ -150,11 +150,11 @@
   }
   .wheel-pointer {
     position: absolute;
-    top: -3px; left: 50%; transform: translateX(-50%);
+    top: -10px; left: 50%; transform: translateX(-50%);
     width: 0; height: 0;
-    border-left: 12px solid transparent;
-    border-right: 12px solid transparent;
-    border-top: 20px solid var(--accent);
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-top: 15px solid var(--accent);
     z-index: 3;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
   }
@@ -416,12 +416,25 @@ function renderHistory() {
 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function ensureAudio() {
+async function ensureAudio() {
   if (!audioCtx) {
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-    catch { audioCtx = null; }
+    catch { audioCtx = null; return; }
   }
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  if (audioCtx && audioCtx.state === "suspended") {
+    try { await audioCtx.resume(); } catch {}
+  }
+  // unlock for iOS: schedule a silent buffer
+  if (audioCtx && !audioCtx._unlocked) {
+    try {
+      const buf = audioCtx.createBuffer(1, 1, 22050);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start(0);
+      audioCtx._unlocked = true;
+    } catch {}
+  }
 }
 
 function beep(freq, durMs, when=0, vol=0.25, type="sine") {
@@ -500,8 +513,8 @@ function buildWheel(svg, items) {
     html += `<path d="M0,0 L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${color}" stroke="#0b0f14" stroke-width="0.6"/>`;
     const cDeg = i * sa - 90;
     const cRad = cDeg * Math.PI / 180;
-    const tx = (r * 0.62) * Math.cos(cRad);
-    const ty = (r * 0.62) * Math.sin(cRad);
+    const tx = (r * 0.55) * Math.cos(cRad);
+    const ty = (r * 0.55) * Math.sin(cRad);
     const fontSize = N <= 4 ? 16 : N <= 6 ? 13 : N <= 8 ? 10.5 : N <= 10 ? 9 : N <= 14 ? 7 : 5.5;
     html += `<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" fill="white" font-size="${fontSize}" font-weight="700" text-anchor="middle" dominant-baseline="middle" transform="rotate(${cDeg.toFixed(2)} ${tx.toFixed(2)} ${ty.toFixed(2)})">${escapeXml(items[i])}</text>`;
   }
@@ -511,6 +524,22 @@ function buildWheel(svg, items) {
 }
 
 const wheelAngles = { game: 0, bb: 0 };
+
+function highlightSector(wheelEl, idx) {
+  const paths = wheelEl.querySelectorAll("path");
+  paths.forEach((p, i) => {
+    p.setAttribute("stroke", i === idx ? "#ffd54a" : "#0b0f14");
+    p.setAttribute("stroke-width", i === idx ? "3" : "0.6");
+  });
+}
+
+function clearHighlight(wheelEl) {
+  const paths = wheelEl.querySelectorAll("path");
+  paths.forEach(p => {
+    p.setAttribute("stroke", "#0b0f14");
+    p.setAttribute("stroke-width", "0.6");
+  });
+}
 
 function spinWheel(key, wheelEl, N, targetIndex, durationMs) {
   return new Promise(resolve => {
@@ -549,7 +578,7 @@ async function draw() {
     return;
   }
   drawing = true;
-  ensureAudio();
+  await ensureAudio();
 
   // pause timer during spin
   const wasRunning = running;
@@ -574,11 +603,14 @@ async function draw() {
   // Build wheels with current data
   buildWheel(gameWheel, gameShorts);
   buildWheel(bbWheel, bbCandidates.map(String));
+  clearHighlight(gameWheel);
+  clearHighlight(bbWheel);
 
   gameResult.textContent = "…";
   bbResult.textContent = "…";
 
   await spinWheel("game", gameWheel, gameShorts.length, gameIdx, 3000);
+  highlightSector(gameWheel, gameIdx);
   playStopSound();
   gameResult.textContent = game;
   popResult(gameResult);
@@ -588,6 +620,7 @@ async function draw() {
   await wait(500);
 
   await spinWheel("bb", bbWheel, bbCandidates.length, bbIdx, 3200);
+  highlightSector(bbWheel, bbIdx);
   playFinalSound();
   bbResult.innerHTML = `${bb}<small>BB</small>`;
   popResult(bbResult);
@@ -652,12 +685,16 @@ function tick() {
   }
 }
 
-startBtn.addEventListener("click", () => {
+startBtn.addEventListener("click", async () => {
   if (drawing) return;
+  await ensureAudio();
   if (running) pauseTimer();
   else startTimer(remaining === intervalSec ? true : false);
 });
-drawNowBtn.addEventListener("click", () => { draw(); });
+drawNowBtn.addEventListener("click", async () => {
+  await ensureAudio();
+  draw();
+});
 
 // ----- Settings -----
 function renderSettingsUI() {
