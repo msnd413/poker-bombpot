@@ -208,6 +208,26 @@
     width: 64px; padding: 8px; background: var(--panel2); color: var(--text);
     border: 1px solid var(--border); border-radius: 8px; font-size: 16px; text-align: center;
   }
+  .row-actions { display: flex; align-items: center; gap: 10px; }
+  .del-game {
+    background: #2a151a; color: #ffb4b4; border: 1px solid #4b1f24;
+    width: 32px; height: 32px; border-radius: 8px; font-size: 14px;
+    cursor: pointer; flex-shrink: 0; line-height: 1;
+  }
+  .del-game:active { transform: scale(0.94); }
+  .add-game {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid #1d2733;
+  }
+  .add-game .add-label {
+    font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: 0.04em;
+  }
+  .add-game input[type="text"] {
+    width: 100%; padding: 10px 12px; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; font-size: 15px;
+  }
+  .add-game input[type="text"]::placeholder { color: #5d6b7a; }
+  .add-game .btn { padding: 11px; }
   .close-btn { width: 100%; margin-top: 16px; }
 
   .history-mini {
@@ -305,6 +325,12 @@
 
     <h3 style="margin-top:18px">ゲームプール</h3>
     <div id="gameList"></div>
+    <div class="add-game">
+      <span class="add-label">＋ ゲームを追加</span>
+      <input type="text" id="newGameName" placeholder="正式名（例: Razz）" maxlength="40" />
+      <input type="text" id="newGameShort" placeholder="略称（任意・ホイール表示用）" maxlength="14" />
+      <button class="btn primary" id="addGameBtn">追加</button>
+    </div>
 
     <button class="btn primary close-btn" id="closeBtn">閉じる</button>
     <button class="btn close-btn" id="resetTimerBtn" style="margin-top:8px">タイマーをリセット</button>
@@ -322,6 +348,11 @@ const DEFAULT_GAMES = [
   { name: "Courchevel", short: "Courchevel", enabled: true },
   { name: "2-7 Triple Draw", short: "2-7 TD", enabled: true },
   { name: "Badugi", short: "Badugi", enabled: true },
+  { name: "暗闇リバーテキサスホールデム", short: "暗闇NLH", enabled: true },
+  { name: "暗闇リバーPLO", short: "暗闇PLO", enabled: true },
+  { name: "スタンドアップゲーム", short: "スタンドアップ", enabled: true },
+  { name: "スーパーホールデム", short: "スーパーHE", enabled: true },
+  { name: "パイナップルポーカー", short: "パイナップル", enabled: true },
 ];
 
 const DEFAULT_SETTINGS = {
@@ -344,6 +375,11 @@ function loadSettings() {
     const parsed = JSON.parse(raw);
     const merged = { ...structuredClone(DEFAULT_SETTINGS), ...parsed };
     if (!Array.isArray(merged.games) || merged.games.length === 0) merged.games = DEFAULT_GAMES.slice();
+    // 新しい初期ゲームを既存プールに追記（保存済み設定でも反映されるように）
+    const knownNames = new Set(merged.games.map(g => g.name));
+    for (const dg of DEFAULT_GAMES) {
+      if (!knownNames.has(dg.name)) merged.games.push({ ...dg });
+    }
     return merged;
   } catch { return structuredClone(DEFAULT_SETTINGS); }
 }
@@ -389,6 +425,9 @@ const soundOnInput = document.getElementById("soundOn");
 const vibeOnInput = document.getElementById("vibeOn");
 const wakeOnInput = document.getElementById("wakeOn");
 const gameListEl = document.getElementById("gameList");
+const newGameNameInput = document.getElementById("newGameName");
+const newGameShortInput = document.getElementById("newGameShort");
+const addGameBtn = document.getElementById("addGameBtn");
 
 function fmt(sec) {
   sec = Math.max(0, Math.round(sec));
@@ -698,6 +737,33 @@ drawNowBtn.addEventListener("click", async () => {
 });
 
 // ----- Settings -----
+function addGame() {
+  const name = newGameNameInput.value.trim();
+  let short = newGameShortInput.value.trim();
+  if (!name) { newGameNameInput.focus(); return; }
+  if (settings.games.some(g => g.name.toLowerCase() === name.toLowerCase())) {
+    alert("同じ名前のゲームがもうあるで。");
+    return;
+  }
+  if (!short) short = name.length > 12 ? name.slice(0, 12) : name;
+  settings.games.push({ name, short, enabled: true, custom: true });
+  saveSettings();
+  newGameNameInput.value = "";
+  newGameShortInput.value = "";
+  renderSettingsUI();
+  buildInitialWheels();
+}
+
+function deleteGame(i) {
+  const g = settings.games[i];
+  if (!g || !g.custom) return;
+  if (!confirm(`「${g.name}」を削除するで。ええか？`)) return;
+  settings.games.splice(i, 1);
+  saveSettings();
+  renderSettingsUI();
+  buildInitialWheels();
+}
+
 function renderSettingsUI() {
   intervalInput.value = settings.intervalMin;
   bbMinInput.value = settings.bbMin;
@@ -707,8 +773,11 @@ function renderSettingsUI() {
   wakeOnInput.checked = settings.wakeOn;
   gameListEl.innerHTML = settings.games.map((g, i) => `
     <div class="row">
-      <label>${g.name}</label>
-      <span class="toggle"><input type="checkbox" data-i="${i}" class="game-toggle" ${g.enabled ? "checked" : ""} /><span class="slider"></span></span>
+      <label>${escapeXml(g.name)}</label>
+      <div class="row-actions">
+        <span class="toggle"><input type="checkbox" data-i="${i}" class="game-toggle" ${g.enabled ? "checked" : ""} /><span class="slider"></span></span>
+        ${g.custom ? `<button class="del-game" data-i="${i}" aria-label="削除">🗑</button>` : ""}
+      </div>
     </div>
   `).join("");
   gameListEl.querySelectorAll(".game-toggle").forEach(el => {
@@ -717,6 +786,11 @@ function renderSettingsUI() {
       settings.games[i].enabled = e.target.checked;
       saveSettings();
       buildInitialWheels();
+    });
+  });
+  gameListEl.querySelectorAll(".del-game").forEach(el => {
+    el.addEventListener("click", (e) => {
+      deleteGame(parseInt(e.currentTarget.dataset.i, 10));
     });
   });
 }
@@ -739,6 +813,12 @@ function bindSettingInputs() {
   wakeOnInput.addEventListener("change", () => {
     settings.wakeOn = wakeOnInput.checked; saveSettings();
     if (settings.wakeOn && running) requestWakeLock(); else releaseWakeLock();
+  });
+  addGameBtn.addEventListener("click", addGame);
+  [newGameNameInput, newGameShortInput].forEach(el => {
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); addGame(); }
+    });
   });
 }
 settingsBtn.addEventListener("click", () => { renderSettingsUI(); overlay.classList.add("open"); });

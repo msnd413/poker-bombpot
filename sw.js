@@ -1,4 +1,4 @@
-const CACHE = "bombpot-v3";
+const CACHE = "bombpot-v4";
 const ASSETS = [
   "./",
   "./index.html",
